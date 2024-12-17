@@ -66,7 +66,7 @@ with tabs[2]:
     st.write("Review the generated file and make manual edits here.")
     
     if "generated_upload_file.xlsx" in os.listdir():
-        edited_df = st.experimental_data_editor(
+        edited_df = st.data_editor(
             pd.read_excel("generated_upload_file.xlsx"), 
             num_rows="dynamic"
         )
@@ -117,7 +117,7 @@ with tabs[5]:
     st.write("Make updates to the uploaded file and re-upload it to the system.")
     
     if "edited_upload_file.xlsx" in os.listdir():
-        updated_df = st.experimental_data_editor(
+        updated_df = st.data_editor(
             pd.read_excel("edited_upload_file.xlsx"), 
             num_rows="dynamic"
         )
