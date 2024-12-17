@@ -1,73 +1,133 @@
+# Install required libraries (for deployment on Streamlit Cloud)
+# To use this locally, uncomment and run the commands below.
+# !pip install streamlit pandas openpyxl
+
 import streamlit as st
 import pandas as pd
-import io
+import os
 
-# Title and Description
-st.title("File Preparation and Upload Workflow")
-st.markdown("""
-This tool streamlines data preparation, review, validation, and uploading processes for your project.
-""")
+# Title for the Application
+st.title("Data Processing Automation UI")
 
-# Section 1: Data Extraction and File Preparation
-st.header("1. Data Extraction and Preparation")
-if st.button("Generate Upload File"):
-    # Placeholder logic for generating a file
-    data = {
-        'MaterialID': [101, 102, 103],
-        'Description': ['Sample A', 'Sample B', 'Sample C']
-    }
-    df = pd.DataFrame(data)
-    st.write("Generated File:")
-    st.dataframe(df)
-    output = io.BytesIO()
-    with pd.ExcelWriter(output, engine='openpyxl') as writer:
-        df.to_excel(writer, index=False, sheet_name="Sheet1")
-    st.download_button(
-        label="Download Generated File",
-        data=output.getvalue(),
-        file_name="upload_file.xlsx",
-        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+# Tab navigation for each step
+tabs = st.tabs([
+    "Upload Data Sources",
+    "Generate Upload File",
+    "Review & Edit Data",
+    "Run Data Quality Checks",
+    "Upload to System",
+    "Manage Updates"
+])
+
+# Step 1: Upload Data Sources
+with tabs[0]:
+    st.header("Upload Data Sources")
+    st.write("Upload your input files from the different data sources here.")
+    
+    uploaded_files = st.file_uploader(
+        "Upload Data Files (CSV, Excel)", 
+        type=["csv", "xlsx"], 
+        accept_multiple_files=True
     )
+    
+    if uploaded_files:
+        st.success(f"{len(uploaded_files)} files uploaded successfully!")
+        dataframes = {}
+        for file in uploaded_files:
+            if file.name.endswith(".csv"):
+                df = pd.read_csv(file)
+            else:
+                df = pd.read_excel(file)
+            dataframes[file.name] = df
+            st.write(f"Preview of {file.name}:", df.head())
 
-# Section 2: User Review and Manual Edits
-st.header("2. Upload and Review File")
-uploaded_file = st.file_uploader("Upload Edited File for Review", type=["xlsx"])
-if uploaded_file:
-    df_uploaded = pd.read_excel(uploaded_file)
-    st.write("Uploaded File Preview:")
-    st.dataframe(df_uploaded)
+# Step 2: Generate Upload File
+with tabs[1]:
+    st.header("Generate Upload File")
+    st.write("Click the button to merge data and generate the upload-ready file.")
+    
+    if st.button("Generate Upload File"):
+        if uploaded_files:
+            # Placeholder logic: Concatenate all uploaded data (adjust as needed)
+            combined_df = pd.concat(dataframes.values())
+            st.write("Generated File Preview:", combined_df.head())
+            combined_df.to_excel("generated_upload_file.xlsx", index=False)
+            st.download_button(
+                "Download Generated Upload File", 
+                data=open("generated_upload_file.xlsx", "rb"), 
+                file_name="upload_file.xlsx"
+            )
+        else:
+            st.warning("Please upload data sources first.")
 
-# Section 3: Data Quality Check
-st.header("3. Run Data Quality Checks")
-if uploaded_file and st.button("Run Quality Checks"):
-    # Placeholder validation logic
-    errors = []
-    if df_uploaded['MaterialID'].isnull().any():
-        errors.append("Missing MaterialID")
-    if df_uploaded['Description'].isnull().any():
-        errors.append("Missing Description")
-
-    if errors:
-        st.error("Data Quality Issues Found:")
-        for error in errors:
-            st.write(f"- {error}")
+# Step 3: Review & Edit Data
+with tabs[2]:
+    st.header("Review & Edit Data")
+    st.write("Review the generated file and make manual edits here.")
+    
+    if "generated_upload_file.xlsx" in os.listdir():
+        edited_df = st.experimental_data_editor(
+            pd.read_excel("generated_upload_file.xlsx"), 
+            num_rows="dynamic"
+        )
+        if st.button("Save Edits"):
+            edited_df.to_excel("edited_upload_file.xlsx", index=False)
+            st.success("Edits saved successfully!")
     else:
-        st.success("No Issues Found. File is ready for upload.")
+        st.warning("Generate the upload file first.")
 
-# Section 4: File Upload
-st.header("4. Upload File to Target System")
-if st.button("Upload File"):
-    # Placeholder logic for uploading
-    if uploaded_file:
-        st.success("File uploaded successfully to the target system.")
+# Step 4: Run Data Quality Checks
+with tabs[3]:
+    st.header("Run Data Quality Checks")
+    st.write("Validate the data for errors or inconsistencies.")
+    
+    if "edited_upload_file.xlsx" in os.listdir():
+        df = pd.read_excel("edited_upload_file.xlsx")
+        errors = []
+        
+        # Sample DQ Checks (customize as needed)
+        if df.isnull().values.any():
+            errors.append("Missing values detected in the file.")
+        if df.duplicated().any():
+            errors.append("Duplicate rows found in the file.")
+        
+        if errors:
+            st.error("Data Quality Issues Found:")
+            for error in errors:
+                st.write(f"- {error}")
+        else:
+            st.success("No Data Quality Issues Found!")
     else:
-        st.error("Please upload a file before proceeding.")
+        st.warning("Please generate and review the upload file first.")
 
-# Section 5: Update and Re-Upload
-st.header("5. Update Previously Uploaded File")
-if st.checkbox("Edit Previously Uploaded File"):
-    st.write("This functionality is under development. Please stay tuned!")
+# Step 5: Upload to System
+with tabs[4]:
+    st.header("Upload to System")
+    st.write("Once the data is validated, upload it to the target system.")
+    
+    if st.button("Upload File"):
+        if "edited_upload_file.xlsx" in os.listdir():
+            st.success("File uploaded successfully!")
+        else:
+            st.warning("Please prepare and validate the file before uploading.")
 
-st.markdown("---")
-st.markdown("For any questions or issues, contact the admin team.")
-
+# Step 6: Manage Updates
+with tabs[5]:
+    st.header("Manage Updates")
+    st.write("Make updates to the uploaded file and re-upload it to the system.")
+    
+    if "edited_upload_file.xlsx" in os.listdir():
+        updated_df = st.experimental_data_editor(
+            pd.read_excel("edited_upload_file.xlsx"), 
+            num_rows="dynamic"
+        )
+        if st.button("Save Updated File"):
+            updated_df.to_excel("final_upload_file.xlsx", index=False)
+            st.success("Updated file saved successfully!")
+            st.download_button(
+                "Download Updated File", 
+                data=open("final_upload_file.xlsx", "rb"), 
+                file_name="updated_file.xlsx"
+            )
+    else:
+        st.warning("Please generate and validate the initial file first.")
