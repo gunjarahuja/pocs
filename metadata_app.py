@@ -1,121 +1,110 @@
 import streamlit as st
 import pandas as pd
 import numpy as np
-from io import BytesIO
 
-# Application Title
-st.set_page_config(page_title="OTD Biospecimen Metadata Management", layout="wide", initial_sidebar_state="expanded")
-st.markdown("# **OTD Biospecimen Metadata Management**")
-st.sidebar.markdown("### Navigation")
+# Function to validate uploaded files
+def validate_file(file):
+    try:
+        df = pd.read_excel(file)  # Or pd.read_csv(file) depending on file format
+        if not all(df.apply(len) == len(df.index)):
+            st.error("Error: Columns in the uploaded file have inconsistent lengths.")
+            return None
+        return df
+    except Exception as e:
+        st.error(f"Error processing file: {e}")
+        return None
 
-# Navigation
-module = st.sidebar.selectbox("Choose Module", ["Module 1: TITV Tracker", "Module 2: Vendor Data Management", "Module 3: D-LIMS Templates Generation", "Module 4: Metadata Alignment"])
+# Initialize session state to store uploaded files
+if 'module1_files' not in st.session_state:
+    st.session_state['module1_files'] = {}
+if 'module2_files' not in st.session_state:
+    st.session_state['module2_files'] = {}
 
-# Function to download templates
-def generate_excel_template(columns):
-    df = pd.DataFrame(columns=columns)
-    output = BytesIO()
-    with pd.ExcelWriter(output, engine="xlsxwriter") as writer:
-        df.to_excel(writer, index=False, sheet_name="Template")
-    return output.getvalue()
-
-def data_quality_report(data):
-    """Generates a data quality report."""
-    nulls = data.isnull().sum()
-    format_issues = []  # Placeholder for additional format checks
-    return pd.DataFrame({"Column": data.columns, "Nulls": nulls, "Format Issues": format_issues})
-
-def consolidate_files(uploaded_files):
-    """Consolidates multiple uploaded files into one."""
-    combined_df = pd.concat([pd.read_excel(file) for file in uploaded_files], ignore_index=True)
-    return combined_df
+st.title("OTD Biospecimen Metadata Management")
 
 # Module 1: TITV Tracker
-if module == "Module 1: TITV Tracker":
-    st.markdown("## TITV Tracker")
-    tab1, tab2, tab3 = st.tabs(["Data Upload Portal", "Data Quality Report", "Review & Edits"])
+with st.expander("Module 1: TITV Tracker"):
+    st.subheader("TITV Tracker (Model Data)")
 
-    with tab1:
-        st.markdown("### Data Upload Portal")
-        columns = ["AnimalID/Donor/Patient ID", "Specimen Name", "Modified Gene Name", "Genetic Modification Type", "Drug Name", "Treatment Status", "Resistance Status", "Modification Status", "3D Model Type"]
-        st.download_button("Download Template", data=generate_excel_template(columns), file_name="TITV_Template.xlsx")
-        uploaded_file = st.file_uploader("Upload TITV Data", type="xlsx")
+    # Tab 1: Data Upload Portal
+    uploaded_file = st.file_uploader("Upload Model Data File (Excel Format)", type=["xlsx", "xls"])
+    if uploaded_file:
+        df = validate_file(uploaded_file)
+        if df is not None:
+            st.session_state['module1_files'][uploaded_file.name] = df
+            st.success("File uploaded and validated successfully!")
 
-    with tab2:
-        st.markdown("### Data Quality Report")
-        if uploaded_file:
-            data = pd.read_excel(uploaded_file)
-            report = data_quality_report(data)
-            st.write(report)
-            if report["Nulls"].sum() == 0:
-                st.success("Upload Successful")
-            else:
-                st.error("Please address the issues and re-upload.")
-
-    with tab3:
-        st.markdown("### Review & Edits")
-        uploaded_files = st.file_uploader("Upload Multiple Files", type="xlsx", accept_multiple_files=True)
-        if uploaded_files:
-            consolidated = consolidate_files(uploaded_files)
-            st.write("Consolidated File", consolidated)
-            if st.button("Save Changes"):
-                st.success("File Consolidated and Updated Successfully!")
+    # Tab 2: Data Quality Report
+    if st.button("Generate Data Quality Report (Module 1)"):
+        for filename, df in st.session_state['module1_files'].items():
+            st.write(f"Data Quality Report for {filename}")
+            null_counts = df.isnull().sum()
+            st.write("Null Value Counts:", null_counts)
+        
+    # Tab 3: Review & Edits
+    if st.button("Review & Consolidate Files (Module 1)"):
+        if st.session_state['module1_files']:
+            consolidated_df = pd.concat(st.session_state['module1_files'].values(), ignore_index=True)
+            st.dataframe(consolidated_df)
+        else:
+            st.warning("No files uploaded yet.")
 
 # Module 2: Vendor Data Management
-elif module == "Module 2: Vendor Data Management":
-    st.markdown("## Vendor Data Management")
-    tab1, tab2 = st.tabs(["Data Upload Portal", "Data Quality Report"])
+with st.expander("Module 2: Vendor Data Management"):
+    st.subheader("Vendor Data Management")
 
-    with tab1:
-        st.markdown("### Data Upload Portal")
-        columns = ["Material ID", "MS ID", "Model Name", "Cell Line Name/Sample ID/Specimen ID", "Prep ID", "Study ID", "Subjid", "CaseID", "AnimalID/Donor/Patient ID", "Cell Bank ID"]
-        st.download_button("Download Template", data=generate_excel_template(columns), file_name="Vendor_Template.xlsx")
-        uploaded_file = st.file_uploader("Upload Vendor Data", type="xlsx")
+    # Tab 1: Data Upload Portal
+    uploaded_vendor_file = st.file_uploader("Upload Vendor Data File (Excel Format)", type=["xlsx", "xls"], key="vendor")
+    if uploaded_vendor_file:
+        df = validate_file(uploaded_vendor_file)
+        if df is not None:
+            st.session_state['module2_files'][uploaded_vendor_file.name] = df
+            st.success("Vendor file uploaded and validated successfully!")
 
-    with tab2:
-        st.markdown("### Data Quality Report")
-        if uploaded_file:
-            data = pd.read_excel(uploaded_file)
-            report = data_quality_report(data)
-            st.write(report)
-            if report["Nulls"].sum() == 0:
-                st.success("Upload Successful")
-            else:
-                st.error("Please address the issues and re-upload.")
+    # Tab 2: Data Quality Report
+    if st.button("Generate Data Quality Report (Module 2)"):
+        for filename, df in st.session_state['module2_files'].items():
+            st.write(f"Data Quality Report for {filename}")
+            null_counts = df.isnull().sum()
+            st.write("Null Value Counts:", null_counts)
 
 # Module 3: D-LIMS Templates Generation
-elif module == "Module 3: D-LIMS Templates Generation":
-    st.markdown("## D-LIMS Templates Generation")
-    tab1, tab2, tab3 = st.tabs(["Draft Template Creation", "Review & Edit", "Data Quality Report"])
+with st.expander("Module 3: D-LIMS Templates Generation"):
+    st.subheader("D-LIMS Templates Generation")
 
-    with tab1:
-        st.markdown("### Draft Template Creation")
-        st.write("Select files from Module 1 & Module 2 for template generation.")
-        material_button = st.button("Generate Material ID File")
-        prep_button = st.button("Generate Prep ID File")
-        if material_button or prep_button:
-            st.success("Files Generated Successfully!")
+    # Dropdowns to select files from Module 1 and Module 2
+    module1_file = st.selectbox("Select File from Module 1", options=list(st.session_state['module1_files'].keys()))
+    module2_file = st.selectbox("Select File from Module 2", options=list(st.session_state['module2_files'].keys()))
 
-    with tab2:
-        st.markdown("### Review & Edit")
-        uploaded_file = st.file_uploader("Upload Files to Review", type="xlsx")
-        if uploaded_file:
-            data = pd.read_excel(uploaded_file)
-            st.write("Editable File", data)
+    if st.button("Generate Material ID & Prep ID Files"):
+        if module1_file and module2_file:
+            module1_df = st.session_state['module1_files'][module1_file]
+            module2_df = st.session_state['module2_files'][module2_file]
 
-    with tab3:
-        st.markdown("### Data Quality Report")
-        if uploaded_file:
-            report = data_quality_report(pd.read_excel(uploaded_file))
-            st.write(report)
-            st.button("Export", key="export_btn")
+            material_id_file = module1_df.head()  # Placeholder for actual processing
+            prep_id_file = module2_df.head()  # Placeholder for actual processing
+
+            st.write("Material ID File:")
+            st.dataframe(material_id_file)
+
+            st.write("Prep ID File:")
+            st.dataframe(prep_id_file)
 
 # Module 4: Metadata Alignment
-elif module == "Module 4: Metadata Alignment":
-    st.markdown("## Metadata Alignment")
-    st.write("Select files from Module 1 & Module 2 to create the final metadata.")
-    files = st.file_uploader("Select Files", type="xlsx", accept_multiple_files=True)
-    if st.button("Create Final Metadata") and files:
-        combined = consolidate_files(files)
-        st.write("Final Metadata", combined)
-        st.success("Final Metadata Created Successfully!")
+with st.expander("Module 4: Metadata Alignment"):
+    st.subheader("Metadata Alignment")
+
+    # Dropdowns to select files from Module 1 and Module 2
+    module1_file_alignment = st.selectbox("Select File from Module 1 (Alignment)", options=list(st.session_state['module1_files'].keys()), key="align1")
+    module2_file_alignment = st.selectbox("Select File from Module 2 (Alignment)", options=list(st.session_state['module2_files'].keys()), key="align2")
+
+    if st.button("Create Final Metadata File"):
+        if module1_file_alignment and module2_file_alignment:
+            module1_df = st.session_state['module1_files'][module1_file_alignment]
+            module2_df = st.session_state['module2_files'][module2_file_alignment]
+
+            final_metadata = pd.merge(module1_df, module2_df, how="outer")  # Placeholder for actual alignment logic
+            st.write("Final Metadata File:")
+            st.dataframe(final_metadata)
+        else:
+            st.warning("Please select files from both Module 1 and Module 2.")
