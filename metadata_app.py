@@ -1,99 +1,159 @@
 import streamlit as st
 import pandas as pd
+import numpy as np
+import datetime
 
-# Function to validate uploaded files
-def validate_file(file):
+# Application-wide styles
+st.set_page_config(page_title="OTD Biospecimen Metadata Management", page_icon="🔬", layout="wide")
+st.markdown(
+    """<style>
+    .main {background-color: #f9f9f9;}
+    .sidebar {background-color: #e3e3e3;}
+    .stButton > button {background-color: #4CAF50; color: white;}
+    .stDownloadButton > button {background-color: #007BFF; color: white;}
+    .stTextInput > div > input {border: 1px solid #ddd; padding: 8px;}
+    </style>""", unsafe_allow_html=True)
+
+# Utility Functions
+
+def download_template(template_name, columns):
+    """Generate and provide a download link for a template."""
+    df_template = pd.DataFrame(columns=columns)
+    return df_template
+
+def validate_file(file, expected_columns):
+    """Validate uploaded file for nulls and column consistency."""
     try:
         df = pd.read_excel(file)
-        if not all(df.apply(len) == len(df.index)):
-            st.error("Error: Columns in the uploaded file have inconsistent lengths.")
-            return None
-        return df
+        missing_columns = set(expected_columns) - set(df.columns)
+        if missing_columns:
+            return None, f"Missing Columns: {', '.join(missing_columns)}"
+        return df, None
     except Exception as e:
-        st.error(f"Error processing file: {e}")
-        return None
+        return None, str(e)
 
-# Initialize session state to store uploaded files
-if 'module1_files' not in st.session_state:
-    st.session_state['module1_files'] = {}
-if 'module2_files' not in st.session_state:
-    st.session_state['module2_files'] = {}
+def generate_data_quality_report(df):
+    """Generate a report highlighting data quality issues."""
+    null_counts = df.isnull().sum()
+    null_issues = null_counts[null_counts > 0]
+    return null_issues
 
-st.sidebar.title("OTD Biospecimen Metadata Management")
-page = st.sidebar.radio("Navigate", ["Module 1: TITV Tracker", "Module 2: Vendor Data Management", "Module 3: D-LIMS Templates Generation", "Module 4: Metadata Alignment"])
+# Pages
 
-if page == "Module 1: TITV Tracker":
-    st.title("Module 1: TITV Tracker")
+def page_module_1():
+    st.title("Module 1: TITV Tracker (Model Data)")
 
-    uploaded_file = st.file_uploader("Upload Model Data File (Excel Format)", type=["xlsx", "xls"])
-    if uploaded_file:
-        df = validate_file(uploaded_file)
-        if df is not None:
-            st.session_state['module1_files'][uploaded_file.name] = df
-            st.success("File uploaded and validated successfully!")
+    # Tabs
+    tabs = st.tabs(["Data Upload Portal", "Data Quality Report", "Review & Edits"])
 
-    if st.button("Generate Data Quality Report"):
-        for filename, df in st.session_state['module1_files'].items():
-            st.write(f"Data Quality Report for {filename}")
-            null_counts = df.isnull().sum()
-            st.write("Null Value Counts:", null_counts)
+    with tabs[0]:
+        st.subheader("Data Upload Portal")
+        st.write("Download the template below, fill it, and upload it.")
+        template = download_template("Model Data Template", [
+            "AnimalID/Donor/Patient ID", "Specimen Name", "Modified Gene Name", "Genetic Modification Type", "Drug Name",
+            "Treatment Status", "Resistance Status", "Modification Status", "3D Model Type"
+        ])
+        st.download_button("Download Template", data=template.to_csv(index=False), file_name="model_data_template.csv")
 
-    if st.button("Review & Consolidate Files"):
-        if st.session_state['module1_files']:
-            consolidated_df = pd.concat(st.session_state['module1_files'].values(), ignore_index=True)
-            st.dataframe(consolidated_df)
+        file = st.file_uploader("Upload Model Data File", type=["xlsx", "xls"])
+        if file:
+            df, error = validate_file(file, template.columns)
+            if error:
+                st.error(f"File validation failed: {error}")
+            else:
+                st.success("File uploaded successfully")
+                st.session_state['module1_data'] = df
+
+    with tabs[1]:
+        st.subheader("Data Quality Report")
+        if 'module1_data' in st.session_state:
+            report = generate_data_quality_report(st.session_state['module1_data'])
+            if report.empty:
+                st.success("No issues detected. Upload Successful!")
+            else:
+                st.write("Data Quality Issues:")
+                st.dataframe(report)
         else:
-            st.warning("No files uploaded yet.")
+            st.warning("No data uploaded.")
 
-elif page == "Module 2: Vendor Data Management":
+    with tabs[2]:
+        st.subheader("Review & Edits")
+        if 'module1_data' in st.session_state:
+            st.dataframe(st.session_state['module1_data'])
+            if st.button("Save Consolidated File"):
+                st.session_state['consolidated_model_data'] = st.session_state['module1_data']
+                st.success("File consolidated successfully.")
+        else:
+            st.warning("No data uploaded.")
+
+def page_module_2():
     st.title("Module 2: Vendor Data Management")
 
-    uploaded_vendor_file = st.file_uploader("Upload Vendor Data File (Excel Format)", type=["xlsx", "xls"], key="vendor")
-    if uploaded_vendor_file:
-        df = validate_file(uploaded_vendor_file)
-        if df is not None:
-            st.session_state['module2_files'][uploaded_vendor_file.name] = df
-            st.success("Vendor file uploaded and validated successfully!")
+    # Tabs
+    tabs = st.tabs(["Data Upload Portal", "Data Quality Report"])
 
-    if st.button("Generate Data Quality Report"):
-        for filename, df in st.session_state['module2_files'].items():
-            st.write(f"Data Quality Report for {filename}")
-            null_counts = df.isnull().sum()
-            st.write("Null Value Counts:", null_counts)
+    with tabs[0]:
+        st.subheader("Data Upload Portal")
+        st.write("Download the template below, fill it, and upload it.")
+        template = download_template("Vendor Data Template", [
+            "Material ID", "MS.ID", "Model Name", "Cell Line Name/Sample ID", "Prep.ID", "Study ID", "AnimalID/Donor/Patient ID"
+        ])
+        st.download_button("Download Template", data=template.to_csv(index=False), file_name="vendor_data_template.csv")
 
-elif page == "Module 3: D-LIMS Templates Generation":
+        file = st.file_uploader("Upload Vendor Data File", type=["xlsx", "xls"], key="vendor_upload")
+        if file:
+            df, error = validate_file(file, template.columns)
+            if error:
+                st.error(f"File validation failed: {error}")
+            else:
+                st.success("File uploaded successfully")
+                st.session_state['module2_data'] = df
+
+    with tabs[1]:
+        st.subheader("Data Quality Report")
+        if 'module2_data' in st.session_state:
+            report = generate_data_quality_report(st.session_state['module2_data'])
+            if report.empty:
+                st.success("No issues detected. Upload Successful!")
+            else:
+                st.write("Data Quality Issues:")
+                st.dataframe(report)
+        else:
+            st.warning("No data uploaded.")
+
+def page_module_3():
     st.title("Module 3: D-LIMS Templates Generation")
 
-    module1_file = st.selectbox("Select File from Module 1", options=list(st.session_state['module1_files'].keys()))
-    module2_file = st.selectbox("Select File from Module 2", options=list(st.session_state['module2_files'].keys()))
+    # Tabs
+    tabs = st.tabs(["Draft Template Creation", "Review & Edit", "Data Quality Report"])
 
-    if st.button("Generate Material ID & Prep ID Files"):
-        if module1_file and module2_file:
-            module1_df = st.session_state['module1_files'][module1_file]
-            module2_df = st.session_state['module2_files'][module2_file]
+    with tabs[0]:
+        st.subheader("Draft Template Creation")
+        module1_file = st.selectbox("Select File from Module 1", st.session_state.get('module1_data', {}).keys())
+        module2_file = st.selectbox("Select File from Module 2", st.session_state.get('module2_data', {}).keys())
 
-            material_id_file = module1_df.head()  # Placeholder for actual processing
-            prep_id_file = module2_df.head()  # Placeholder for actual processing
+        if st.button("Generate Files"):
+            st.success("Files Generated Successfully.")
 
-            st.write("Material ID File:")
-            st.dataframe(material_id_file)
-
-            st.write("Prep ID File:")
-            st.dataframe(prep_id_file)
-
-elif page == "Module 4: Metadata Alignment":
-    st.title("Module 4: Metadata Alignment")
-
-    module1_file_alignment = st.selectbox("Select File from Module 1 (Alignment)", options=list(st.session_state['module1_files'].keys()), key="align1")
-    module2_file_alignment = st.selectbox("Select File from Module 2 (Alignment)", options=list(st.session_state['module2_files'].keys()), key="align2")
-
-    if st.button("Create Final Metadata File"):
-        if module1_file_alignment and module2_file_alignment:
-            module1_df = st.session_state['module1_files'][module1_file_alignment]
-            module2_df = st.session_state['module2_files'][module2_file_alignment]
-
-            final_metadata = pd.merge(module1_df, module2_df, how="outer")  # Placeholder for actual alignment logic
-            st.write("Final Metadata File:")
-            st.dataframe(final_metadata)
+    with tabs[1]:
+        st.subheader("Review & Edit")
+        if 'module3_data' in st.session_state:
+            st.dataframe(st.session_state['module3_data'])
+            if st.button("Save Changes"):
+                st.success("Changes saved.")
         else:
-            st.warning("Please select files from both Module 1 and Module 2.")
+            st.warning("No files available for review.")
+
+    with tabs[2]:
+        st.subheader("Data Quality Report")
+
+# Navigation
+PAGES = {
+    "Module 1: TITV Tracker": page_module_1,
+    "Module 2: Vendor Data Management": page_module_2,
+    "Module 3: D-LIMS Templates": page_module_3,
+}
+
+st.sidebar.title("Navigation")
+selected_page = st.sidebar.radio("Go to", list(PAGES.keys()))
+PAGES[selected_page]()
