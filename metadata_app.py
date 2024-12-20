@@ -37,144 +37,153 @@ if 'module2_files' not in st.session_state:
 if 'generated_files' not in st.session_state:
     st.session_state['generated_files'] = {}
 
-# Title and Description
-st.title("OTD Biospecimen Metadata Management")
-st.markdown("Manage biospecimen metadata effectively with quality checks, templates, and alignment.")
+# Sidebar Navigation
+st.sidebar.title("Navigation")
+module = st.sidebar.radio("Go to", ["Home", "Module 1", "Module 2", "Module 3", "Module 4"])
+
+# Home Page
+if module == "Home":
+    st.title("OTD Biospecimen Metadata Management")
+    st.markdown("Manage biospecimen metadata effectively with quality checks, templates, and alignment.")
 
 # Module 1: TITV Tracker (Model Data)
-st.header("Module 1: TITV Tracker (Model Data)")
+elif module == "Module 1":
+    st.title("Module 1: TITV Tracker (Model Data)")
 
-with st.expander("1. Data Upload Portal"):
-    st.write("Download the template below:")
-    template_data = pd.DataFrame({
-        "AnimalID/Donor/Patient ID": [],
-        "Specimen Name": [],
-        "Modified Gene Name": [],
-        "Genetic Modification Type": [],
-        "Drug Name": [],
-        "Treatment Status": [],
-        "Resistance Status": [],
-        "Modification Status": [],
-        "3D Model Type": []
-    })
-    download_template("TITV_Tracker_Template", template_data)
+    with st.expander("1. Data Upload Portal"):
+        st.write("Download the template below:")
+        template_data = pd.DataFrame({
+            "AnimalID/Donor/Patient ID": [],
+            "Specimen Name": [],
+            "Modified Gene Name": [],
+            "Genetic Modification Type": [],
+            "Drug Name": [],
+            "Treatment Status": [],
+            "Resistance Status": [],
+            "Modification Status": [],
+            "3D Model Type": []
+        })
+        download_template("TITV_Tracker_Template", template_data)
 
-    uploaded_file = st.file_uploader("Upload TITV Tracker File", type=["xlsx"])
-    if uploaded_file:
-        df = validate_file(uploaded_file)
-        if df is not None:
-            st.session_state['module1_files'][uploaded_file.name] = df
-            st.success("File uploaded and validated successfully!")
+        uploaded_file = st.file_uploader("Upload TITV Tracker File", type=["xlsx"])
+        if uploaded_file:
+            df = validate_file(uploaded_file)
+            if df is not None:
+                st.session_state['module1_files'][uploaded_file.name] = df
+                st.success("File uploaded and validated successfully!")
 
-with st.expander("2. Data Quality Report"):
-    if st.button("Generate Data Quality Report (Module 1)"):
-        if st.session_state['module1_files']:
-            for filename, df in st.session_state['module1_files'].items():
-                st.write(f"Data Quality Report for {filename}")
-                message, issues = generate_quality_report(df)
-                st.write(message)
-                if issues is not None:
-                    st.write(issues)
-        else:
-            st.warning("No files uploaded yet.")
+    with st.expander("2. Data Quality Report"):
+        if st.button("Generate Data Quality Report (Module 1)"):
+            if st.session_state['module1_files']:
+                for filename, df in st.session_state['module1_files'].items():
+                    st.write(f"Data Quality Report for {filename}")
+                    message, issues = generate_quality_report(df)
+                    st.write(message)
+                    if issues is not None:
+                        st.write(issues)
+            else:
+                st.warning("No files uploaded yet.")
 
-with st.expander("3. Review & Edits"):
-    if st.button("Consolidate and Review Files"):
-        if st.session_state['module1_files']:
-            consolidated_df = pd.concat(st.session_state['module1_files'].values(), ignore_index=True)
-            st.dataframe(consolidated_df)
-            st.session_state['consolidated_module1'] = consolidated_df
-        else:
-            st.warning("No files to consolidate.")
+    with st.expander("3. Review & Edits"):
+        if st.button("Consolidate and Review Files"):
+            if st.session_state['module1_files']:
+                consolidated_df = pd.concat(st.session_state['module1_files'].values(), ignore_index=True)
+                st.dataframe(consolidated_df)
+                st.session_state['consolidated_module1'] = consolidated_df
+            else:
+                st.warning("No files to consolidate.")
 
 # Module 2: Vendor Data Management
-st.header("Module 2: Vendor Data Management")
+elif module == "Module 2":
+    st.title("Module 2: Vendor Data Management")
 
-with st.expander("1. Data Upload Portal"):
-    st.write("Download the template below:")
-    vendor_template = pd.DataFrame({
-        "Material ID": [],
-        "MS ID": [],
-        "Model Name": [],
-        "Cell Line Name": [],
-        "Prep ID": [],
-        "Study ID": [],
-        "AnimalID/Donor/Patient ID": [],
-        "Cell Bank ID": []
-    })
-    download_template("Vendor_Data_Template", vendor_template)
+    with st.expander("1. Data Upload Portal"):
+        st.write("Download the template below:")
+        vendor_template = pd.DataFrame({
+            "Material ID": [],
+            "MS ID": [],
+            "Model Name": [],
+            "Cell Line Name": [],
+            "Prep ID": [],
+            "Study ID": [],
+            "AnimalID/Donor/Patient ID": [],
+            "Cell Bank ID": []
+        })
+        download_template("Vendor_Data_Template", vendor_template)
 
-    vendor_file = st.file_uploader("Upload Vendor Data File", type=["xlsx"], key="vendor")
-    if vendor_file:
-        df = validate_file(vendor_file)
-        if df is not None:
-            st.session_state['module2_files'][vendor_file.name] = df
-            st.success("Vendor file uploaded and validated successfully!")
+        vendor_file = st.file_uploader("Upload Vendor Data File", type=["xlsx"], key="vendor")
+        if vendor_file:
+            df = validate_file(vendor_file)
+            if df is not None:
+                st.session_state['module2_files'][vendor_file.name] = df
+                st.success("Vendor file uploaded and validated successfully!")
 
-with st.expander("2. Data Quality Report"):
-    if st.button("Generate Data Quality Report (Module 2)"):
-        if st.session_state['module2_files']:
-            for filename, df in st.session_state['module2_files'].items():
-                st.write(f"Data Quality Report for {filename}")
-                message, issues = generate_quality_report(df)
-                st.write(message)
-                if issues is not None:
-                    st.write(issues)
-        else:
-            st.warning("No files uploaded yet.")
+    with st.expander("2. Data Quality Report"):
+        if st.button("Generate Data Quality Report (Module 2)"):
+            if st.session_state['module2_files']:
+                for filename, df in st.session_state['module2_files'].items():
+                    st.write(f"Data Quality Report for {filename}")
+                    message, issues = generate_quality_report(df)
+                    st.write(message)
+                    if issues is not None:
+                        st.write(issues)
+            else:
+                st.warning("No files uploaded yet.")
 
 # Module 3: D-LIMS Templates Generation
-st.header("Module 3: D-LIMS Templates Generation")
+elif module == "Module 3":
+    st.title("Module 3: D-LIMS Templates Generation")
 
-with st.expander("1. Draft Template Creation"):
-    module1_file = st.selectbox("Select File from Module 1", options=list(st.session_state['module1_files'].keys()))
-    module2_file = st.selectbox("Select File from Module 2", options=list(st.session_state['module2_files'].keys()))
+    with st.expander("1. Draft Template Creation"):
+        module1_file = st.selectbox("Select File from Module 1", options=list(st.session_state['module1_files'].keys()))
+        module2_file = st.selectbox("Select File from Module 2", options=list(st.session_state['module2_files'].keys()))
 
-    if st.button("Generate Templates"):
-        if module1_file and module2_file:
-            module1_df = st.session_state['module1_files'][module1_file]
-            module2_df = st.session_state['module2_files'][module2_file]
+        if st.button("Generate Templates"):
+            if module1_file and module2_file:
+                module1_df = st.session_state['module1_files'][module1_file]
+                module2_df = st.session_state['module2_files'][module2_file]
 
-            material_id_file = module1_df.head()  # Placeholder logic
-            prep_id_file = module2_df.head()  # Placeholder logic
+                material_id_file = module1_df.head()  # Placeholder logic
+                prep_id_file = module2_df.head()  # Placeholder logic
 
-            st.session_state['generated_files']['Material_ID_File'] = material_id_file
-            st.session_state['generated_files']['Prep_ID_File'] = prep_id_file
+                st.session_state['generated_files']['Material_ID_File'] = material_id_file
+                st.session_state['generated_files']['Prep_ID_File'] = prep_id_file
 
-            st.success("Files generated successfully!")
+                st.success("Files generated successfully!")
 
-with st.expander("2. Review & Edit"):
-    if 'generated_files' in st.session_state:
-        for file_name, data in st.session_state['generated_files'].items():
-            st.write(file_name)
-            st.dataframe(data)
-
-with st.expander("3. Data Quality Report"):
-    if st.button("Generate Data Quality Report (Generated Files)"):
+    with st.expander("2. Review & Edit"):
         if 'generated_files' in st.session_state:
-            for file_name, df in st.session_state['generated_files'].items():
-                st.write(f"Data Quality Report for {file_name}")
-                message, issues = generate_quality_report(df)
-                st.write(message)
-                if issues is not None:
-                    st.write(issues)
+            for file_name, data in st.session_state['generated_files'].items():
+                st.write(file_name)
+                st.dataframe(data)
+
+    with st.expander("3. Data Quality Report"):
+        if st.button("Generate Data Quality Report (Generated Files)"):
+            if 'generated_files' in st.session_state:
+                for file_name, df in st.session_state['generated_files'].items():
+                    st.write(f"Data Quality Report for {file_name}")
+                    message, issues = generate_quality_report(df)
+                    st.write(message)
+                    if issues is not None:
+                        st.write(issues)
 
 # Module 4: Metadata Alignment
-st.header("Module 4: Metadata Alignment")
+elif module == "Module 4":
+    st.title("Module 4: Metadata Alignment")
 
-with st.expander("Metadata Alignment"):
-    module1_file_align = st.selectbox("Select File from Module 1 for Alignment", options=list(st.session_state['module1_files'].keys()), key="align1")
-    module2_file_align = st.selectbox("Select File from Module 2 for Alignment", options=list(st.session_state['module2_files'].keys()), key="align2")
+    with st.expander("Metadata Alignment"):
+        module1_file_align = st.selectbox("Select File from Module 1 for Alignment", options=list(st.session_state['module1_files'].keys()), key="align1")
+        module2_file_align = st.selectbox("Select File from Module 2 for Alignment", options=list(st.session_state['module2_files'].keys()), key="align2")
 
-    if st.button("Create Final Metadata File"):
-        if module1_file_align and module2_file_align:
-            module1_df = st.session_state['module1_files'][module1_file_align]
-            module2_df = st.session_state['module2_files'][module2_file_align]
+        if st.button("Create Final Metadata File"):
+            if module1_file_align and module2_file_align:
+                module1_df = st.session_state['module1_files'][module1_file_align]
+                module2_df = st.session_state['module2_files'][module2_file_align]
 
-            final_metadata = pd.merge(module1_df, module2_df, how="outer")  # Placeholder for actual alignment logic
-            st.write("Final Metadata File:")
-            st.dataframe(final_metadata)
-            st.session_state['final_metadata'] = final_metadata
+                final_metadata = pd.merge(module1_df, module2_df, how="outer")  # Placeholder for actual alignment logic
+                st.write("Final Metadata File:")
+                st.dataframe(final_metadata)
+                st.session_state['final_metadata'] = final_metadata
 
-        else:
-            st.warning("Please select files from both Module 1 and Module 2.")
+            else:
+                st.warning("Please select files from both Module 1 and Module 2.")
